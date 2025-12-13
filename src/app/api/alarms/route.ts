@@ -34,9 +34,9 @@ const mapRowToAlarm = (row: AlarmRow): Alarm => ({
   repeat: Boolean(row.repeat),
   note: row.note ?? undefined,
   active: Boolean(row.active),
-  createdAt: row.created_at,
-  firedAt: row.fired_at,
-  lastPrice: row.last_price,
+  createdAt: row.created_at ?? "",
+  firedAt: row.fired_at ?? undefined,
+  lastPrice: row.last_price ?? undefined,
 });
 
 export async function GET() {
