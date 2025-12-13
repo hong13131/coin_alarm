@@ -49,7 +49,7 @@ export async function GET() {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ alarms: (data || []).map(mapRowToAlarm) });
+  return NextResponse.json({ alarms: (data || []).map((row) => mapRowToAlarm(row as AlarmRow)) });
 }
 
 export async function POST(request: NextRequest) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({ alarm: mapRowToAlarm(data) }, { status: 201 });
+    return NextResponse.json({ alarm: mapRowToAlarm(data as AlarmRow) }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "알람 생성 오류";
     return NextResponse.json({ error: message }, { status: 400 });
@@ -98,7 +98,7 @@ export async function PATCH(request: NextRequest) {
       .select()
       .single();
     if (error) throw error;
-    return NextResponse.json({ alarm: mapRowToAlarm(data) });
+    return NextResponse.json({ alarm: mapRowToAlarm(data as AlarmRow) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "알람 업데이트 오류";
     return NextResponse.json({ error: message }, { status: 400 });
