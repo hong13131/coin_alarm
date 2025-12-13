@@ -4,6 +4,9 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendTelegramMessage } from "@/lib/telegram";
 import type { Database } from "@/lib/types/supabase";
 
+export const runtime = "edge";
+export const preferredRegion = ["icn1"];
+
 const DEMO_CHAT_ID = process.env.TELEGRAM_DEMO_CHAT_ID;
 
 type AlarmRow = Database["public"]["Tables"]["alarms"]["Row"];
