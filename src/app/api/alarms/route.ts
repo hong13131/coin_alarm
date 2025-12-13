@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { alarmCreateSchema, alarmUpdateSchema } from "@/lib/validators";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Alarm } from "@/lib/types";
+import type { Database } from "@/lib/types/supabase";
 
 type AlarmRow = {
   id: string;
@@ -62,18 +63,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const parsed = alarmCreateSchema.parse(body);
+    const payload: Database["public"]["Tables"]["alarms"]["Insert"] = {
+      user_id: userId,
+      symbol: parsed.symbol,
+      market_type: parsed.marketType,
+      direction: parsed.direction,
+      target_price: parsed.targetPrice,
+      repeat: parsed.repeat,
+      note: parsed.note || null,
+      active: true,
+    };
+
     const { data, error } = await supabase
       .from("alarms")
-      .insert({
-        user_id: userId,
-        symbol: parsed.symbol,
-        market_type: parsed.marketType,
-        direction: parsed.direction,
-        target_price: parsed.targetPrice,
-        repeat: parsed.repeat,
-        note: parsed.note || null,
-        active: true,
-      })
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;
@@ -95,9 +98,14 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const parsed = alarmUpdateSchema.parse(body);
+    const updates: Database["public"]["Tables"]["alarms"]["Update"] = {
+      active: parsed.active,
+      repeat: parsed.repeat,
+    };
+
     const { data, error } = await supabase
       .from("alarms")
-      .update({ active: parsed.active, repeat: parsed.repeat })
+      .update(updates)
       .eq("id", parsed.id)
       .eq("user_id", userId)
       .select()
