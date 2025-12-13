@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchTickerPrice } from "@/lib/binance";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendTelegramMessage } from "@/lib/telegram";
@@ -11,11 +11,20 @@ type AlarmUpdate = Database["public"]["Tables"]["alarms"]["Update"];
 type TelegramLinkRow = Database["public"]["Tables"]["telegram_links"]["Row"];
 
 function isTriggered(alarm: AlarmRow, price: number) {
-  // 위/아래 단순 비교(기본)
   return alarm.direction === "above" ? price >= alarm.target_price : price <= alarm.target_price;
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // ✅ 외부 스케줄러/워커가 호출할 때 보호용 시크릿 검사
+  const url = new URL(req.url);
+  const secret = url.searchParams.get("secret") || req.headers.get("x-cron-secret");
+
+  if (process.env.CRON_SECRET) {
+    if (!secret || secret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  }
+
   const supabase = createSupabaseAdmin();
 
   const [{ data: active, error }, { data: links }] = await Promise.all([
@@ -43,11 +52,7 @@ export async function POST() {
   const prices: Record<string, number> = {};
   for (const key of Object.keys(grouped)) {
     const sample = grouped[key][0];
-    // DB 타입은 string이라서 fetchTickerPrice가 유니온을 원하면 캐스팅
-    prices[key] = await fetchTickerPrice(
-      sample.symbol,
-      sample.market_type as "spot" | "futures"
-    );
+    prices[key] = await fetchTickerPrice(sample.symbol, sample.market_type as "spot" | "futures");
   }
 
   const fired: AlarmRow[] = [];
