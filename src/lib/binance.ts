@@ -1,16 +1,33 @@
 import { CandlePoint, MarketType } from "./types";
 
-const endpoints: Record<MarketType, string> = {
+const primary: Record<MarketType, string> = {
   spot: "https://api.binance.com",
   futures: "https://fapi.binance.com",
 };
 
-export async function fetchTickerPrice(symbol: string, marketType: MarketType) {
-  const base = endpoints[marketType];
-  const path = marketType === "spot" ? "/api/v3/ticker/price" : "/fapi/v1/ticker/price";
-  const url = `${base}${path}?symbol=${encodeURIComponent(symbol)}`;
+// data-api CDN은 지역 제한(451) 우회를 위한 백업 엔드포인트
+const fallback: Record<MarketType, string> = {
+  spot: "https://data-api.binance.vision",
+  futures: "https://data-api.binance.vision", // fapi 경로 동일
+};
 
-  const res = await fetch(url, { next: { revalidate: 0 } });
+async function fetchWithFallback(path: string, marketType: MarketType) {
+  const first = `${primary[marketType]}${path}`;
+  let res = await fetch(first, { cache: "no-store" });
+  if (res.status === 451) {
+    const second = `${fallback[marketType]}${path}`;
+    res = await fetch(second, { cache: "no-store" });
+  }
+  return res;
+}
+
+export async function fetchTickerPrice(symbol: string, marketType: MarketType) {
+  const path =
+    marketType === "spot"
+      ? `/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`
+      : `/fapi/v1/ticker/price?symbol=${encodeURIComponent(symbol)}`;
+
+  const res = await fetchWithFallback(path, marketType);
   if (!res.ok) {
     throw new Error(`가격 조회 실패 (${res.status})`);
   }
@@ -25,11 +42,12 @@ export async function fetchCandles(params: {
   limit: number;
 }): Promise<CandlePoint[]> {
   const { symbol, marketType, interval, limit } = params;
-  const base = endpoints[marketType];
-  const path = marketType === "spot" ? "/api/v3/klines" : "/fapi/v1/klines";
-  const url = `${base}${path}?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`;
+  const path =
+    marketType === "spot"
+      ? `/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`
+      : `/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`;
 
-  const res = await fetch(url, { next: { revalidate: 0 } });
+  const res = await fetchWithFallback(path, marketType);
   if (!res.ok) {
     throw new Error(`캔들 조회 실패 (${res.status})`);
   }
