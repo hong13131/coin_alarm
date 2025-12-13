@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { IChartApi } from "lightweight-charts";
+import type { IChartApi, UTCTimestamp } from "lightweight-charts";
 import { CandlePoint } from "@/lib/types";
 
 type Props = {
   data: CandlePoint[];
   height?: number;
+};
+
+// number time(ms/sec) -> UTCTimestamp(sec)
+const toUTCTimestamp = (t: number): UTCTimestamp => {
+  // 13자리면 ms, 10자리면 sec로 판단
+  const sec = t > 1e12 ? Math.floor(t / 1000) : t;
+  return sec as UTCTimestamp;
 };
 
 // lightweight-charts는 DOM이 필요한 라이브러리라 클라이언트 사이드에서만 동적 로드한다.
@@ -16,6 +23,7 @@ export function PriceChart({ data, height = 260 }: Props) {
 
   useEffect(() => {
     let cleanup = () => {};
+
     const init = async () => {
       const container = containerRef.current;
       if (!container) return;
@@ -69,7 +77,7 @@ export function PriceChart({ data, height = 260 }: Props) {
       if (data.length) {
         series.setData(
           data.map((candle) => ({
-            time: candle.time,
+            time: toUTCTimestamp(candle.time),
             open: candle.open,
             high: candle.high,
             low: candle.low,
