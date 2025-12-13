@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
   const query = (params.q || "").toUpperCase();
 
   try {
-    const res = await fetch(endpoints[marketType], { next: { revalidate: 300 } });
+    // 바이낸스 exchangeInfo 응답이 커서 캐시를 끄지 않으면 Vercel에서 2MB 초과 오류가 날 수 있다.
+    const res = await fetch(endpoints[marketType], { cache: "no-store" });
     if (!res.ok) {
       return NextResponse.json({ error: "심볼 정보를 불러올 수 없습니다" }, { status: 502 });
     }
