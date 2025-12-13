@@ -63,20 +63,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const parsed = alarmCreateSchema.parse(body);
+
+    const payload: Database["public"]["Tables"]["alarms"]["Insert"] = {
+      user_id: userId,
+      symbol: parsed.symbol,
+      market_type: parsed.marketType,
+      direction: parsed.direction,
+      target_price: parsed.targetPrice,
+      repeat: parsed.repeat ?? false,
+      note: parsed.note || null,
+      active: true,
+    };
+
     const { data, error } = await supabase
       .from("alarms")
-      .insert([
-        {
-          user_id: userId,
-          symbol: parsed.symbol,
-          market_type: parsed.marketType,
-          direction: parsed.direction,
-          target_price: parsed.targetPrice,
-          repeat: parsed.repeat,
-          note: parsed.note || null,
-          active: true,
-        } as Database["public"]["Tables"]["alarms"]["Insert"],
-      ])
+      .insert(payload)
       .select()
       .single();
     if (error) throw error;
