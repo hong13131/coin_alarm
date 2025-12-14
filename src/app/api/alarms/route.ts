@@ -3,6 +3,7 @@ import { alarmCreateSchema, alarmUpdateSchema } from "@/lib/validators";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/types/supabase";
 import type { Alarm } from "@/lib/types";
+import { z } from "zod";
 
 type AlarmRow = Database["public"]["Tables"]["alarms"]["Row"];
 type AlarmInsert = Database["public"]["Tables"]["alarms"]["Insert"];
@@ -56,6 +57,42 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = alarmCreateSchema.parse(body);
 
+    // (repeat 포함) "완전 동일(메모 포함)" 중복 생성 방지
+    {
+      const noteValue = (parsed.note ?? "").trim();
+
+      let existingQuery = supabase
+        .from("alarms")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("symbol", parsed.symbol)
+        .eq("market_type", parsed.marketType)
+        .eq("direction", parsed.direction)
+        .eq("target_price", parsed.targetPrice)
+        // active 컬럼이 nullable이라 과거 데이터(null)도 "활성"로 취급
+        .neq("active", false)
+        .limit(1);
+
+      existingQuery =
+        parsed.repeat === true
+          ? existingQuery.eq("repeat", true)
+          : existingQuery.or("repeat.is.null,repeat.eq.false");
+
+      existingQuery = noteValue
+        ? existingQuery.eq("note", noteValue)
+        : existingQuery.or("note.is.null,note.eq.");
+
+      const { data: existing, error: existingError } = await existingQuery;
+      if (existingError) throw existingError;
+
+      if (existing && existing.length > 0) {
+        return NextResponse.json(
+          { error: "이미 동일한 알람이 있습니다." },
+          { status: 409 },
+        );
+      }
+    }
+
     const payload: AlarmInsert = {
       user_id: userId,
       symbol: parsed.symbol,
@@ -63,7 +100,7 @@ export async function POST(request: NextRequest) {
       direction: parsed.direction,
       target_price: parsed.targetPrice,
       repeat: parsed.repeat ?? false,
-      note: parsed.note || null,
+      note: (parsed.note ?? "").trim() || null,
       active: true,
     };
 
@@ -89,24 +126,45 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const parsed = alarmUpdateSchema.parse(body);
 
-    const updates: AlarmUpdate = {
-      active: parsed.active,
-      repeat: parsed.repeat,
-    };
+    const alarmUpdateManySchema = z.object({
+      ids: z.array(z.string().min(1)).min(1),
+      active: z.boolean().optional(),
+      repeat: z.boolean().optional(),
+    });
+
+    const parsed = alarmUpdateSchema.or(alarmUpdateManySchema).parse(body);
+
+    const updates: AlarmUpdate = {};
+    if ("active" in parsed && parsed.active !== undefined) updates.active = parsed.active;
+    if ("repeat" in parsed && parsed.repeat !== undefined) updates.repeat = parsed.repeat;
+
+    const ids = "ids" in parsed ? parsed.ids : [parsed.id];
+
+    if (ids.length === 1) {
+      const { data, error } = await supabase
+        .from("alarms")
+        .update(updates)
+        .eq("id", ids[0])
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      return NextResponse.json({ alarm: mapRowToAlarm(data as AlarmRow) });
+    }
 
     const { data, error } = await supabase
       .from("alarms")
       .update(updates)
-      .eq("id", parsed.id)
+      .in("id", ids)
       .eq("user_id", userId)
-      .select("*")
-      .single();
+      .select("*");
 
     if (error) throw error;
 
-    return NextResponse.json({ alarm: mapRowToAlarm(data as AlarmRow) });
+    return NextResponse.json({ alarms: (data ?? []).map((row) => mapRowToAlarm(row as AlarmRow)) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "알람 업데이트 오류";
     return NextResponse.json({ error: message }, { status: 400 });
@@ -120,15 +178,14 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const body = await request.json();
-    if (!body?.id) {
-      return NextResponse.json({ error: "id가 필요합니다" }, { status: 400 });
-    }
 
-    const { error } = await supabase
-      .from("alarms")
-      .delete()
-      .eq("id", body.id)
-      .eq("user_id", userId);
+    const alarmDeleteSchema = z
+      .object({ id: z.string().min(1) })
+      .or(z.object({ ids: z.array(z.string().min(1)).min(1) }));
+    const parsed = alarmDeleteSchema.parse(body);
+    const ids = "ids" in parsed ? parsed.ids : [parsed.id];
+
+    const { error } = await supabase.from("alarms").delete().in("id", ids).eq("user_id", userId);
 
     if (error) throw error;
 

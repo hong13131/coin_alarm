@@ -38,6 +38,8 @@ export default function Home() {
     note: "",
   });
   const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedAlarmIds, setSelectedAlarmIds] = useState<Set<string>>(() => new Set());
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<SymbolSuggestion[]>([]);
   const [symbolsLoading, setSymbolsLoading] = useState(false);
@@ -120,6 +122,15 @@ export default function Home() {
   useEffect(() => {
     refreshAlarms();
   }, [refreshAlarms]);
+
+  useEffect(() => {
+    setSelectedAlarmIds((prev) => {
+      if (prev.size === 0) return prev;
+      const currentIds = new Set(alarms.map((a) => a.id));
+      const next = new Set(Array.from(prev).filter((id) => currentIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [alarms]);
 
   const fetchChatId = useCallback(async () => {
     try {
@@ -204,6 +215,57 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    refreshAlarms();
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedAlarmIds(new Set());
+  };
+
+  const toggleSelectedAlarm = (id: string) => {
+    setSelectedAlarmIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllAlarms = () => {
+    setSelectedAlarmIds(new Set(alarms.map((a) => a.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedAlarmIds(new Set());
+  };
+
+  const bulkDeleteSelected = async () => {
+    const ids = Array.from(selectedAlarmIds);
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 ${ids.length}개 알람을 삭제할까요?`)) return;
+
+    await fetch("/api/alarms", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    exitSelectionMode();
+    refreshAlarms();
+  };
+
+  const bulkSetActiveSelected = async (nextActive: boolean) => {
+    const ids = Array.from(selectedAlarmIds);
+    if (ids.length === 0) return;
+
+    await fetch("/api/alarms", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, active: nextActive }),
+    });
+
+    clearSelection();
     refreshAlarms();
   };
 
@@ -517,9 +579,71 @@ export default function Home() {
         </div>
 
         <section className="rounded-3xl border border-[--border] bg-[--card] p-6 shadow-xl backdrop-blur">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-xl font-semibold">내 알람</h2>
-            <p className="text-sm text-[--muted]">목록은 데모 스토어(인메모리) 기준입니다.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">내 알람</h2>
+              <p className="text-sm text-[--muted]">목록은 데모 스토어(인메모리) 기준입니다.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {!selectionMode ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode(true)}
+                  className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10"
+                >
+                  선택
+                </button>
+              ) : (
+                <>
+                  <span className="text-xs text-[--muted]">선택 {selectedAlarmIds.size}개</span>
+                  <button
+                    type="button"
+                    onClick={selectAllAlarms}
+                    className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10"
+                  >
+                    전체 선택
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10"
+                  >
+                    선택 해제
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => bulkSetActiveSelected(true)}
+                    disabled={selectedAlarmIds.size === 0}
+                    className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                  >
+                    활성
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => bulkSetActiveSelected(false)}
+                    disabled={selectedAlarmIds.size === 0}
+                    className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                  >
+                    비활성
+                  </button>
+                  <button
+                    type="button"
+                    onClick={bulkDeleteSelected}
+                    disabled={selectedAlarmIds.size === 0}
+                    className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 font-medium text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    삭제
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exitSelectionMode}
+                    className="rounded-lg border border-[--border] bg-white/5 px-3 py-2 font-medium text-white transition hover:bg-white/10"
+                  >
+                    완료
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {alarms.map((alarm) => (
@@ -535,13 +659,26 @@ export default function Home() {
                     </div>
                     <div className="text-lg font-semibold text-white">{alarm.symbol}</div>
                   </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      alarm.active ? "bg-[#65f8ff]/20 text-[#65f8ff]" : "bg-white/10 text-[--muted]"
-                    }`}
-                  >
-                    {alarm.active ? "활성" : "비활성"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {selectionMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedAlarmIds.has(alarm.id)}
+                        onChange={() => toggleSelectedAlarm(alarm.id)}
+                        className="h-4 w-4 rounded border-[--border] bg-black/30 accent-[--accent]"
+                        aria-label="알람 선택"
+                      />
+                    )}
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        alarm.active
+                          ? "bg-[#65f8ff]/20 text-[#65f8ff]"
+                          : "bg-white/10 text-[--muted]"
+                      }`}
+                    >
+                      {alarm.active ? "활성" : "비활성"}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-sm text-white">
                   목표가: <span className="font-semibold">{alarm.targetPrice.toLocaleString()}</span>
@@ -558,13 +695,15 @@ export default function Home() {
                 <div className="flex gap-2 text-sm">
                   <button
                     onClick={() => toggleAlarm(alarm)}
-                    className="flex-1 rounded-lg border border-[--border] bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
+                    disabled={selectionMode}
+                    className="flex-1 rounded-lg border border-[--border] bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20 disabled:opacity-50"
                   >
                     {alarm.active ? "일시정지" : "다시 켜기"}
                   </button>
                   <button
                     onClick={() => deleteAlarm(alarm.id)}
-                    className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-red-200 transition hover:bg-red-500/20"
+                    disabled={selectionMode}
+                    className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-red-200 transition hover:bg-red-500/20 disabled:opacity-50"
                   >
                     삭제
                   </button>
@@ -583,14 +722,35 @@ export default function Home() {
           <h3 className="text-lg font-semibold text-white">텔레그램/크론 연동 가이드</h3>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-[--border] bg-black/30 p-4 space-y-3">
-              <p className="font-medium text-white">1) 텔레그램 링크</p>
+              <p className="font-medium text-white">1) 텔레그램 연동</p>
               <ol className="list-decimal space-y-1 pl-4">
                 <li>
-                  텔레그램에서 <a className="text-[#65f8ff]" href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
-                    @userinfobot
-                  </a> 에게 <code>/start</code> 입력 → 답변의 chat_id 확인
+                  텔레그램에서{" "}
+                  <a
+                    className="text-[#65f8ff]"
+                    href="https://t.me/Coin_buza_bot"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    @Coin_buza_bot
+                  </a>
+                  에게 <code>/start</code> 입력 → 알람 수신 가능
                 </li>
-                <li>아래 입력창에 chat_id 붙여넣기 → 저장</li>
+                <li>
+                  텔레그램에서{" "}
+                  <a
+                    className="text-[#65f8ff]"
+                    href="https://t.me/userinfobot"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    @userinfobot
+                  </a>{" "}
+                  에게 <code>/start</code> 입력 → 답변의 <code>chat_id</code> 확인
+                </li>
+                <li>
+                  아래 입력창에 <code>chat_id</code> 붙여넣기 → 저장
+                </li>
               </ol>
               <form onSubmit={handleSaveChatId} className="space-y-2">
                 <input
