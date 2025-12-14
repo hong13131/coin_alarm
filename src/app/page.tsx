@@ -72,7 +72,26 @@ export default function Home() {
         setPrice(null);
         return;
       }
-      setPrice(Number(data.price));
+      const nextPrice = Number(data.price);
+      setPrice(nextPrice);
+
+      // 3초 주기 price 폴링 시, 차트의 "마지막 캔들"만 현재가 기준으로 가볍게 갱신
+      // (전체 캔들 re-fetch는 별도 주기로 수행)
+      if (Number.isFinite(nextPrice)) {
+        setCandles((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          const updatedLast = {
+            ...last,
+            close: nextPrice,
+            high: Math.max(last.high, nextPrice),
+            low: Math.min(last.low, nextPrice),
+          };
+          const next = prev.slice();
+          next[next.length - 1] = updatedLast;
+          return next;
+        });
+      }
       setPriceStatus("idle");
     } catch (err) {
       console.error(err);
@@ -118,6 +137,21 @@ export default function Home() {
     refreshPrice();
     refreshCandles();
   }, [refreshCandles, refreshPrice]);
+
+  // 자동 새로고침: 현재가(3초), 캔들(15초)
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      refreshPrice();
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [refreshPrice]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      refreshCandles();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [refreshCandles]);
 
   useEffect(() => {
     refreshAlarms();
