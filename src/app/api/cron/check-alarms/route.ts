@@ -24,7 +24,7 @@ function requireEnv(name: string) {
  * 트리거 규칙(관통 기준):
  * - above(상승 돌파): prev < target && curr >= target
  * - below(하락 돌파): prev > target && curr <= target
- * - cross(양방향 돌파): 위 둘 중 하나라도 만족
+ * - cross(돌파): 위 둘 중 하나라도 만족
  *
  * last_price가 null이면:
  * - above/below/cross 모두 첫 체크에서는 발동하지 않고 last_price만 저장 (이후 "진짜 돌파"만 감지)
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
             ? "상승 돌파"
             : alarm.direction === "below"
               ? "하락 돌파"
-              : "양방향 돌파";
+              : "돌파";
 
         const text =
           `[코인 알람] ${dirText}\n` +

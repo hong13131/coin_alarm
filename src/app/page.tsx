@@ -33,7 +33,7 @@ export default function Home() {
   const [alarmForm, setAlarmForm] = useState<AlarmFormState>({
     symbol: "BTCUSDT",
     targetPrice: "80000",
-    direction: "above",
+    direction: "cross",
     marketType: "futures",
     note: "",
   });
@@ -271,10 +271,10 @@ export default function Home() {
 
   const formLabel =
     alarmForm.direction === "above"
-      ? "이상 도달 시 알림"
+      ? "상승 돌파 알림"
       : alarmForm.direction === "below"
-        ? "이하 도달 시 알림"
-        : "목표가 돌파 시 알림";
+        ? "하락 돌파 알림"
+        : "돌파 알림";
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -479,12 +479,12 @@ export default function Home() {
                         direction: e.target.value as "above" | "below" | "cross",
                       }))
                     }
-                    className="rounded-lg border border-[--border] bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-[--accent]"
-                  >
-                    <option value="above">이상 돌파</option>
-                    <option value="below">이하 돌파</option>
-                    <option value="cross">양방향 돌파</option>
-                  </select>
+                  className="rounded-lg border border-[--border] bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-[--accent]"
+                >
+                  <option value="cross">돌파</option>
+                  <option value="above">상승 돌파</option>
+                  <option value="below">하락 돌파</option>
+                </select>
                 </div>
 
                 <label className="text-xs text-[--muted]">목표가</label>
@@ -655,7 +655,11 @@ export default function Home() {
                   <div>
                     <div className="text-sm text-[--muted]">
                       {alarm.marketType === "spot" ? "현물" : "선물"} ·{" "}
-                      {alarm.direction === "above" ? "이상" : "이하"}
+                      {alarm.direction === "cross"
+                        ? "돌파"
+                        : alarm.direction === "above"
+                          ? "상승 돌파"
+                          : "하락 돌파"}
                     </div>
                     <div className="text-lg font-semibold text-white">{alarm.symbol}</div>
                   </div>
