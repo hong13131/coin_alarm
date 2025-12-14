@@ -567,6 +567,8 @@ export default function Home() {
                   <option value="5m">5분봉</option>
                   <option value="15m">15분봉</option>
                   <option value="1h">1시간봉</option>
+                  <option value="4h">4시간봉</option>
+                  <option value="1d">1일봉</option>
                 </select>
                 <span className="hidden sm:inline">· {candles.length}개</span>
               </div>
