@@ -371,15 +371,7 @@ export default function Home() {
             {priceStatus === "error" && (
               <p className="mt-3 text-xs text-red-300">가격을 불러오지 못했습니다.</p>
             )}
-            <button
-              onClick={() => {
-                refreshPrice();
-                refreshCandles();
-              }}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/15"
-            >
-              새로고침
-            </button>
+            <p className="mt-4 text-xs text-[--muted]">자동 갱신: 현재가 3초</p>
             <button
               onClick={handleSignOut}
               disabled={signingOut}
