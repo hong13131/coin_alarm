@@ -564,6 +564,7 @@ export default function Home() {
                   onChange={(e) => setInterval(e.target.value)}
                   className="rounded-lg border border-[--border] bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-[--accent]"
                 >
+                  <option value="1m">1분봉</option>
                   <option value="5m">5분봉</option>
                   <option value="15m">15분봉</option>
                   <option value="1h">1시간봉</option>
