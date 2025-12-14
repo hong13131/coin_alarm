@@ -309,26 +309,15 @@ export default function Home() {
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-[--border] bg-[--card] px-3 py-1 text-xs text-[--muted] backdrop-blur">
-              Next.js + Telegram + Binance
+              Binance 알람 → Telegram 푸시
             </div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              개인 맞춤형 코인 알람 대시보드
+              바이낸스 기준 돌파 알람
             </h1>
             <p className="max-w-2xl text-sm text-[--muted]">
-              티커 입력 → 가격/캔들 조회 → 알람 설정 → 텔레그램으로 푸시. 크론 기반으로 가볍게
-              동작하도록 스캐폴딩했습니다.
+              티커 입력 → 가격/캔들 조회 → 알람 설정 → 텔레그램으로 푸시.
             </p>
-            <div className="flex flex-wrap gap-2 text-xs text-[--muted]">
-              <span className="rounded-full border border-[--border] bg-[--card] px-3 py-1">
-                현물/선물 지원
-              </span>
-              <span className="rounded-full border border-[--border] bg-[--card] px-3 py-1">
-                Vercel Cron/Render Cron
-              </span>
-              <span className="rounded-full border border-[--border] bg-[--card] px-3 py-1">
-                Supabase 연동 여지
-              </span>
-            </div>
+            <p className="text-xs text-[--muted]">바이낸스(현물/선물) 시세를 기준으로 동작합니다.</p>
           </div>
           <div className="w-full max-w-sm rounded-2xl border border-[--border] bg-[--card] p-4 shadow-lg backdrop-blur">
             <div className="text-xs text-[--muted]">현재가</div>
@@ -582,7 +571,7 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold">내 알람</h2>
-              <p className="text-sm text-[--muted]">목록은 데모 스토어(인메모리) 기준입니다.</p>
+              <p className="text-sm text-[--muted]">알람은 계정 기준으로 저장됩니다.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {!selectionMode ? (
@@ -778,11 +767,11 @@ export default function Home() {
               </form>
             </div>
             <div className="rounded-2xl border border-[--border] bg-black/30 p-4">
-              <p className="font-medium text-white">2) 크론</p>
+              <p className="font-medium text-white">2) 알람 설정</p>
               <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li>Vercel Cron → <code>POST /api/cron/check-alarms</code></li>
-                <li>최소 1분 주기로 등록 (5초 이하 불가)</li>
-                <li>더 빠른 알림은 WebSocket 워커를 별도 런타임에 배치</li>
+                <li>티커 선택 (예: BTCUSDT)</li>
+                <li>돌파/상승 돌파/하락 돌파 + 목표가 입력</li>
+                <li>조건 충족 시 텔레그램으로 알림이 옵니다</li>
               </ul>
             </div>
           </div>
