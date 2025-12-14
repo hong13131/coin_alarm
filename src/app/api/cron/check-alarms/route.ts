@@ -27,8 +27,7 @@ function requireEnv(name: string) {
  * - cross(양방향 돌파): 위 둘 중 하나라도 만족
  *
  * last_price가 null이면:
- * - above/below는 "현재가가 이미 기준을 넘은 상태"면 1회 발동 가능하게(원하면 바꿀 수 있음)
- * - cross는 즉시 발동하면 혼란스러워서(항상 참처럼 느껴짐) 1회는 last_price만 저장하고 패스
+ * - above/below/cross 모두 첫 체크에서는 발동하지 않고 last_price만 저장 (이후 "진짜 돌파"만 감지)
  */
 function computeTriggered(alarm: AlarmRow, prev: number | null, curr: number): boolean {
   const target = alarm.target_price;
@@ -37,10 +36,10 @@ function computeTriggered(alarm: AlarmRow, prev: number | null, curr: number): b
   const crossDown = prev !== null && prev > target && curr <= target;
 
   if (alarm.direction === "above") {
-    return prev === null ? curr >= target : crossUp;
+    return crossUp;
   }
   if (alarm.direction === "below") {
-    return prev === null ? curr <= target : crossDown;
+    return crossDown;
   }
   // cross
   if (prev === null) return false; // 첫 체크는 last_price만 저장
